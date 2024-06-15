@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: url('f4e4959c-cb3a-438b-aac5-41a3e132f818.jpg') no-repeat center center fixed; /* Image background */
+            background-size: cover; /* Make sure the image covers the whole background */
+        }
+        h1 {
+            color: black;
+            font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+            border-radius: 20px;
+            background: linear-gradient(to right, #ffcccc, #ffccff, #ccccff, #ccffff, #ccffcc, #ffffcc, #ffcc99);
+        }
+        #webcam-container {
+            margin-top: 20px;
+        }
+        #button1{
+            height: 40px;
+            width: 100;
+            font-size: 20px;
+            font-family: cursive;
+            border-radius: 20px;
+            background: linear-gradient(to top, #20a849, #abffa9);
+            font-weight: bold;
+            border-width: 3px;
+        }
+
+        #label-container > div {
+            margin-top: 25px;
+            font-size: 20px;
+            font-weight: bold;
+            font-family: cursive;
+            color: rgb(0, 0, 0); /* Light red color */
+        }
+    </style>
+</head>
+<body>
+    <h1>Teachable Machine Image Model</h1>
+    <button id="button1"type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+
+    <script type="text/javascript">
+        // the link to your model provided by Teachable Machine export panel
+        const URL = "https://teachablemachine.withgoogle.com/models/HisHxSwYB/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        // Load the image model and setup the webcam
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // load the model and metadata
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // Convenience function to setup a webcam
+            const flip = true; // whether to flip the webcam
+            webcam = new tmImage.Webcam(400, 400, flip); // increased width and height to 400
+            await webcam.setup(); // request access to the webcam
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // append elements to the DOM
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) { // and class labels
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop() {
+            webcam.update(); // update the webcam frame
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        // run the webcam image through the image model
+        async function predict() {
+            // predict can take in an image, video or canvas html element
+            const prediction = await model.predict(webcam.canvas);
+            labelContainer.innerHTML = ''; // Clear previous labels
+
+            // Find the highest prediction with a probability > 0.5
+            let highestPrediction = null;
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > 0.5) {
+                    if (!highestPrediction || prediction[i].probability > highestPrediction.probability) {
+                        highestPrediction = prediction[i];
+                    }
+                }
+            }
+
+            // Display the highest prediction if it exists
+            if (highestPrediction) {
+                const classPrediction =
+                    highestPrediction.className + ": " + (highestPrediction.probability * 100).toFixed(2) + "%";
+                const div = document.createElement("div");
+                div.innerHTML = classPrediction;
+                labelContainer.appendChild(div);
+            }
+        }
+    </script>
+</body>
+</html>
